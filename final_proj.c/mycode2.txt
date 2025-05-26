@@ -1,0 +1,231 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+#include <time.h>
+#include <ctype.h>
+
+#define MAX_LINE_LENGTH 1024
+
+bool CheckBraces(const char *code) {
+    int balance = 0;
+    for (size_t i = 0; code[i] != '\0'; i++) {
+        if (code[i] == '{') {
+            balance++;
+        } else if (code[i] == '}') {
+            balance--;
+            if (balance < 0) {
+                return false;
+            }
+        }
+    }
+        for (size_t i = 0; code[i] != '\0'; i++) {
+        if (code[i] == '(') {
+            balance++;
+        } else if (code[i] == ')') {
+            balance--;
+            if (balance < 0) {
+                return false;
+            }
+        }
+    }
+
+
+    return balance == 0;
+}
+
+bool CheckIfStatements(const char *code) {
+    char *copy = strdup(code);
+    if (!copy) return false;
+    
+    char *line = strtok(copy, "\n");
+    while (line != NULL) {
+        // Trim leading whitespace
+        while (isspace((unsigned char)*line)) line++;
+        
+        if (strncmp(line, "if", 2) == 0 && (isspace((unsigned char)line[2]) || line[2] == '(')) {
+            char *paren = strchr(line, '(');
+            if (paren == NULL) {
+                free(copy);
+                return false;
+            }
+            
+            char *close_paren = strchr(paren, ')');
+            if (close_paren == NULL) {
+                free(copy);
+                return false;
+            }
+            
+            // checking for some garbage if there between parenthesis
+            if (close_paren == paren + 1) {
+                free(copy);
+                return false;
+            }
+        }
+        
+        line = strtok(NULL, "\n");
+    }
+    
+    free(copy);
+    return true;
+}
+
+bool CheckWhileStatements(const char *code) {
+    char *copy = strdup(code);
+    if (!copy) return false;
+    
+    char *line = strtok(copy, "\n");
+    while (line != NULL) {
+        // Trim leading whitespace
+        while (isspace((unsigned char)*line)) line++;
+        
+        if (strncmp(line, "while", 5) == 0 && (isspace((unsigned char)line[5]) || line[5] == '(')) {
+            char *paren = strchr(line, '(');
+            if (paren == NULL) {
+                free(copy);
+                return false;
+            }
+            
+            char *close_paren = strchr(paren, ')');
+            if (close_paren == NULL) {
+                free(copy);
+                return false;
+            }
+            
+            // Check there's something between parentheses
+            if (close_paren == paren + 1) {
+                free(copy);
+                return false;
+            }
+        }
+        
+        line = strtok(NULL, "\n");
+    }
+    
+    free(copy);
+    return true;
+}
+
+bool CheckForStatements(const char *code) {
+    char *copy = strdup(code);
+    if (!copy) return false;
+    
+    char *line = strtok(copy, "\n");
+    while (line != NULL) {
+        // Trim leading whitespace
+        while (isspace((unsigned char)*line)) line++;
+        
+        if (strncmp(line, "for", 3) == 0 && (isspace((unsigned char)line[3]) || line[3] == '(')) {
+            char *paren = strchr(line, '(');
+            if (paren == NULL) {
+                free(copy);
+                return false;
+            }
+            
+            char *close_paren = strchr(paren, ')');
+            if (close_paren == NULL) {
+                free(copy);
+                return false;
+            }
+            
+            // Count semicolons between parentheses
+            int semicolons = 0;
+            char *ptr = paren + 1;
+            while (ptr < close_paren) {
+                if (*ptr == ';') semicolons++;
+                ptr++;
+            }
+            
+            if (semicolons != 2) {
+                free(copy);
+                return false;
+            }
+        }
+        
+        line = strtok(NULL, "\n");
+    }
+    
+    free(copy);
+    return true;
+}
+
+char* ReadFile(const char* filename) {
+    FILE *file = fopen("mycode2.txt", "r");
+    if (!file) {
+        perror("Failed to open file");
+        return NULL;
+    }
+    
+    fseek(file, 0, SEEK_END);
+    long length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    
+    char *buffer = malloc(length + 1);
+    if (!buffer) {
+        fclose(file);
+        return NULL;
+    }
+    
+    fread(buffer, 1, length, file);
+    buffer[length] = '\0';
+    
+    fclose(file);
+    return buffer;
+}
+
+int main() {
+    char *code = ReadFile("sample.c");
+    if (!code) {
+        fprintf(stderr, "Failed to read file\n");
+        return EXIT_FAILURE;
+    }
+    
+    bool braceMatch, ifStatementsCorrect, whileStatementsCorrect, forStatementsCorrect;
+    
+    clock_t start = clock();
+    
+    braceMatch = CheckBraces(code);
+    ifStatementsCorrect = CheckIfStatements(code);
+    whileStatementsCorrect = CheckWhileStatements(code);
+    forStatementsCorrect = CheckForStatements(code);
+    
+    clock_t end = clock();
+    double elapsed = ((double)(end - start)) / CLOCKS_PER_SEC;
+    
+    printf("--------------------------------\n");
+    if (braceMatch) {
+        printf("Braces matched successfully.\n");
+    } else {
+        printf("Braces do not match.\n");
+    }
+    
+    if (ifStatementsCorrect) {
+        printf("'If' statements are correct.\n");
+    } else {
+        printf("'If' statements are incorrect.\n");
+    }
+    
+    if (whileStatementsCorrect) {
+        printf("'While' statements are correct.\n");
+    } else {
+        printf("'While' statements are incorrect.\n");
+    }
+    
+    if (forStatementsCorrect) {
+        printf("'For' statements are correct.\n");
+    } else {
+        printf("'For' statements are incorrect.\n");
+    }
+    
+    printf("Finished checks in %.6f seconds\n", elapsed);
+    printf("--------------------------------\n");
+    
+    if (braceMatch && ifStatementsCorrect && whileStatementsCorrect && forStatementsCorrect) {
+        printf("Code is valid.\n");
+    } else {
+        printf("Code is invalid.\n");
+    }
+    
+    free(code);
+    return 0;
+}
